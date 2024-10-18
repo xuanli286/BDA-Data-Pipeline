@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
-import json
 import os
 import pandas as pd
 import praw
@@ -50,10 +49,10 @@ for subreddit in airline_subreddits:
                 })
 
 posts_df = pd.DataFrame(posts)
-posts_df.to_csv('./reddit_posts_dump.csv')
+posts_df.to_csv('reddit_posts.csv')
 
 comments_df = pd.DataFrame(comments)
-comments_df.to_csv('./reddit_comments_dump.csv')
+comments_df.to_csv('reddit_comments.csv')
 
 print(f'Total Posts: {len(posts)}')
 print(f'Total Comments: {len(comments)}')
