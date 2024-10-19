@@ -1,7 +1,8 @@
 from datetime import datetime
 from dotenv import load_dotenv
+import boto3
+import json
 import os
-import pandas as pd
 import praw
 
 load_dotenv()
@@ -48,11 +49,23 @@ for subreddit in airline_subreddits:
                     'parent_id': str(comment.parent_id),
                 })
 
-posts_df = pd.DataFrame(posts)
-posts_df.to_csv('reddit_posts.csv')
-
-comments_df = pd.DataFrame(comments)
-comments_df.to_csv('reddit_comments.csv')
+s3 = boto3.client('s3')
+try:
+    s3.put_object(
+        Bucket='is459-project-data', 
+        Key='reddit/reddit_posts.json',
+        Body=json.dumps(posts),
+        ContentType='application/json'
+    )
+    s3.put_object(
+        Bucket='is459-project-data', 
+        Key=f'reddit/reddit_comments.json',
+        Body=json.dumps(comments),
+        ContentType='application/json'
+    )
+    print("Files uploaded to S3 successfully")
+except Exception as e:
+    print("Error uploading to S3: ", e)
 
 print(f'Total Posts: {len(posts)}')
 print(f'Total Comments: {len(comments)}')
