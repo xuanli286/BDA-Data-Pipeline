@@ -280,28 +280,35 @@ class ScrapeReddit:
         comments_list = []
         for (comment, idx) in zip(comments, range(len(comments))):
             if 'body' in comment['data'] and 'author' in comment['data'] and 'created_utc' in comment['data']:
+                try:
+                    comment_body = comment['data']['body']
+                    comment_user = comment['data']['author']
+                    comment_time = comment['data']['created_utc']
+                    comments_list.append({'body': comment_body,
+                                        'user': comment_user,
+                                        'time': comment_time})
+                    comment_replies = []
 
-                comment_body = comment['data']['body']
-                comment_user = comment['data']['author']
-                comment_time = comment['data']['created_utc']
-                comments_list.append({'body': comment_body,
-                                    'user': comment_user,
-                                    'time': comment_time})
-                comment_replies = []
+                    # append reply to the comment to which it belongs
 
-                # append reply to the comment to which it belongs
-
-                if comment['data']['replies'] != '':
-                    replies = comment['data']['replies']['data']['children']
-                    for reply in replies:
-                        if all(key in reply['data'] for key in ['body', 'author', 'created_utc']):
-                        # if reply['data']['body'] and reply['data']['author'] and reply['data']['created_utc']:
-                            reply_body = reply['data']['body']
-                            reply_user = reply['data']['author']
-                            reply_time = reply['data']['created_utc']
-                            comment_replies.append({'body': reply_body,
-                                    'user': reply_user, 'time': reply_time})
-                comments_list[idx]['replies'] = comment_replies
+                    if comment['data']['replies'] != '':
+                        try:
+                            replies = comment['data']['replies']['data']['children']
+                            for reply in replies:
+                                if all(key in reply['data'] for key in ['body', 'author', 'created_utc']):
+                                # if reply['data']['body'] and reply['data']['author'] and reply['data']['created_utc']:
+                                    reply_body = reply['data']['body']
+                                    reply_user = reply['data']['author']
+                                    reply_time = reply['data']['created_utc']
+                                    comment_replies.append({'body': reply_body,
+                                            'user': reply_user, 'time': reply_time})
+                        except KeyError:
+                            print("Error parsing comment replies")
+                            continue
+                    comments_list[idx]['replies'] = comment_replies
+                except KeyError:
+                    print("Error parsing comments")
+                    continue
 
         # Convert the timestamp to a datetime object
         post_date = datetime.fromtimestamp(post_time)
