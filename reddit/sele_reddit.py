@@ -22,13 +22,13 @@ import time
 import json
 import os
 from datetime import datetime, timedelta
-import boto3
 
+# subreddits = ['https://www.reddit.com/r/SouthwestAirlines/top/?t=all', 'https://www.reddit.com/r/SouthwestAirlines/top/?t=year', 'https://www.reddit.com/r/SouthwestAirlines/hot/']
+subreddits = ['https://www.reddit.com/r/SouthwestAirlines/top/?t=all']
 
 class ScrapeReddit:
-    def __init__(self, subreddit_name, headless=False):
+    def __init__(self, headless=False):
         """Initialize the Reddit scraper with Chrome WebDriver"""
-        self.subreddit_name = subreddit_name
         self.chrome_options = Options()
         if headless:
             self.chrome_options.add_argument("--headless")  # Run in headless mode
@@ -47,14 +47,11 @@ class ScrapeReddit:
             options=self.chrome_options
         )
         self.wait = WebDriverWait(self.driver, 10)
-        # options = Options()
-        # self.driver = webdriver.Safari(service=Service(executable_path='/usr/bin/safaridriver'), options=options)
         self.postids = []
-
 
     def save_id_to_json(self, data, batch_number):
         """Save the post IDs to a JSON file in the local computer."""
-        directory = 'ids/'+ self.subreddit_name
+        directory = 'ids/SouthwestAirlines'
         if not os.path.exists(directory):
             os.makedirs(directory)
 
@@ -156,47 +153,25 @@ class ScrapeReddit:
 
     def get_data(self, postid):
         """Fetch post data from Reddit based on the post ID."""
-        base_url = "https://reddit.com/r/{}/comments/".format(self.subreddit_name)
-        # print(base_url)
+        base_url = "https://reddit.com/r/SouthwestAirlines/comments/"
         url = base_url + postid + ".json"
-        print(url)
         self.driver.get(url)
         # self.driver.maximize_window()
         html = self.driver.page_source
-        text = ""
-        try:
-            soup = BeautifulSoup(html, 'html.parser')
-            body = soup.find('body')
-            if body:
-                text = body.get_text()
-            else:
-                print(f"No 'body' found in HTML for post ID: {postid}")
-                # Save the HTML content for inspection
-                with open(f"html_error_{postid}.html", 'w', encoding='utf-8') as html_file:
-                    html_file.write(html)
-                with open('errors.json', 'a') as file:
-                    file.write(json.dumps({"error": "No body found", "postid": postid}) + "\n")
-        except Exception as e:
-            print(e)
-            print(f"Error fetching data for post ID: {postid}")
-            with open('errors.json', 'a') as file:
-                file.write(json.dumps({"error": str(e), "postid": postid}) + "\n")
-
+        soup = BeautifulSoup(html, 'html.parser')
+        text = soup.find('body').get_text()
         time.sleep(3)
         return text
     
     def load_post_ids_from_json(self):
         """Load all post IDs from the saved JSON files in the 'data' directory."""
-        directory = 'ids/' + self.subreddit_name
+        directory = 'ids/SouthwestAirlines'
         all_post_ids = []  # This will store all the post IDs from all batches
         if not os.path.exists(directory):
             print(f"Directory {directory} does not exist, skipping loading of post IDs.")
             return
-        
-        print(directory)
         # Iterate over all the files in the 'data' directory
         for filename in os.listdir(directory):
-            print(filename)
             if filename.endswith('.json'):  # Only process JSON files
                 file_path = os.path.join(directory, filename)
                 print(f"Loading post IDs from {file_path}")
@@ -217,7 +192,7 @@ class ScrapeReddit:
         if not self.postids:
             self.load_post_ids_from_json()
             print("No post IDs found. Please run get_posts() first.")
-            return []
+            return
         
         for postid in self.postids:
             print(postid, count)
@@ -233,21 +208,8 @@ class ScrapeReddit:
         """Fetch posts from the subreddits and collect post IDs."""
         for link in subreddits:
             self.driver.get(link)
-            # self.driver.maximize_window()
             time.sleep(5)
             # post_links = self.lazy_scroll(scroll_duration_minutes=20)
-            # print(f"Total unique post links collected: {len(post_links)}")
-
-            # # print(len(post_links))
-            # count = 1
-
-            # for post_link in post_links:
-            #     print(post_link)
-            #     post_id = post_link.split('/')[-3]
-            #     print(f"{count} - {post_id}")
-            #     count += 1
-            #     if post_id not in self.postids:
-            #         self.postids.append(post_id)
 
     @staticmethod
     def get_post_info(json_data):
@@ -259,12 +221,9 @@ class ScrapeReddit:
         """
 
         if not json_data or 'data' not in json_data[0] or 'children' not in json_data[0]['data'] or len(json_data[0]['data']['children']) == 0:
-
-            if 'data' not in json_data[1] or 'children' not in json_data[1]['data']:
-                
-                # Skip processing if json_data structure is invalid
-                print("Invalid post data, skipping...")
-                return None
+            # Skip processing if json_data structure is invalid
+            print("Invalid post data, skipping...")
+            return None
 
         date_limit = datetime(2023, 8, 1)
         post = json_data[0]['data']['children'][0]['data']
@@ -275,40 +234,38 @@ class ScrapeReddit:
         post_user = post['author']
         post_time = post['created_utc']
         self_text = post['selftext']
-
         comments = json_data[1]['data']['children']
         comments_list = []
+
         for (comment, idx) in zip(comments, range(len(comments))):
             if 'body' in comment['data'] and 'author' in comment['data'] and 'created_utc' in comment['data']:
-                try:
-                    comment_body = comment['data']['body']
-                    comment_user = comment['data']['author']
-                    comment_time = comment['data']['created_utc']
-                    comments_list.append({'body': comment_body,
-                                        'user': comment_user,
-                                        'time': comment_time})
-                    comment_replies = []
 
-                    # append reply to the comment to which it belongs
+                comment_body = comment['data']['body']
+                comment_user = comment['data']['author']
+                comment_time = comment['data']['created_utc']
+                comments_list.append({'body': comment_body,
+                                    'user': comment_user,
+                                    'time': comment_time})
+                comment_replies = []
 
-                    if comment['data']['replies'] != '':
-                        try:
-                            replies = comment['data']['replies']['data']['children']
-                            for reply in replies:
-                                if all(key in reply['data'] for key in ['body', 'author', 'created_utc']):
-                                # if reply['data']['body'] and reply['data']['author'] and reply['data']['created_utc']:
-                                    reply_body = reply['data']['body']
-                                    reply_user = reply['data']['author']
-                                    reply_time = reply['data']['created_utc']
-                                    comment_replies.append({'body': reply_body,
-                                            'user': reply_user, 'time': reply_time})
-                        except KeyError:
-                            print("Error parsing comment replies")
-                            continue
-                    comments_list[idx]['replies'] = comment_replies
-                except KeyError:
-                    print("Error parsing comments")
-                    continue
+            # append reply to the comment to which it belongs
+
+            # Check if 'replies' exists and is not empty or [removed]
+            if 'replies' in comment['data'] and comment['data']['replies'] != '' and comment['data']['replies'] != '[removed]':
+                print(f"Found replies for comment: {comment['data']['replies']}")  # Print the value of replies
+
+                # Make sure the 'data' and 'children' keys are present in the replies structure
+                if 'data' in comment['data']['replies'] and 'children' in comment['data']['replies']['data']:
+                    replies = comment['data']['replies']['data']['children']
+
+                    for reply in replies:
+                        # Ensure that the required keys are present in each reply
+                        if all(key in reply['data'] for key in ['body', 'author', 'created_utc']):
+                            reply_body = reply['data']['body']
+                            reply_user = reply['data']['author']
+                            reply_time = reply['data']['created_utc']
+                            comment_replies.append({'body': reply_body, 'user': reply_user, 'time': reply_time})
+            comments_list[-1]['replies'] = comment_replies
 
         # Convert the timestamp to a datetime object
         post_date = datetime.fromtimestamp(post_time)
@@ -316,9 +273,9 @@ class ScrapeReddit:
         # Format the datetime object to a readable string
         formatted_date = post_date.strftime('%Y-%m-%d %H:%M:%S')
 
-        # if post_date < date_limit:
-        #     print(f"Post from {post_body} is earlier than August 2023. Skipping.")
-        #     return None
+        if post_date < date_limit:
+            print(f"Post from {post_body} is earlier than August 2023. Skipping.")
+            return None
 
         num_comments = post['num_comments']
         link = post['permalink']
@@ -333,104 +290,57 @@ class ScrapeReddit:
             'self_text': self_text,
             "comments": comments_list,
         }
-    
-    def log_error(self, postid, error_message):
-        """Log any errors during scraping."""
-        error_log_file = 'error_log.json'
-
-        # If the error log doesn't exist, create it
-        if not os.path.exists(error_log_file):
-            with open(error_log_file, 'w') as file:
-                json.dump([], file)
-
-        # Append error to the log
-        with open(error_log_file, 'r') as file:
-            error_log = json.load(file)
-
-        error_log.append({
-            'postid': postid,
-            'error': str(error_message),
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        })
-
-        with open(error_log_file, 'w') as file:
-            json.dump(error_log, file, indent=4)
-        print(f"Logged error for post ID {postid}: {error_message}")
 
     def destroy(self):
         """Close the WebDriver."""
         self.driver.close()
 
 
-subreddit_name = 'SouthwestAirlines'
-subreddits = ['https://www.reddit.com/r/{}/top/?t=all'.format(subreddit_name),
-            'https://www.reddit.com/r/{}/top/?t=year'.format(subreddit_name),
-            'https://www.reddit.com/r/{}/hot/'.format(subreddit_name)]
-
-# def upload_to_s3(file_path, file_name):
-#     s3_key = f"{s3_folder_path}{file_name}"
-#     try:
-#         s3.upload_file(file_path, bucket_name, s3_key)
-#         print(f"Uploaded {file_name} to {s3_key}")
-#     except Exception as e:
-#         print(f"Error uploading {file_name} to S3: {e}")
-
-@staticmethod
-def save_to_json(self, data, subreddit, batch_number=None):
-        """Save the scraped data to a JSON file immediately."""
-        current_dir = os.getcwd()
-        timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-
-        # Construct the directory path
-        directory_path = os.path.join(current_dir, 'data', subreddit)
-        if not os.path.exists(directory_path):
-            os.makedirs(directory_path)
-
-        # Use a different filename for batch data
-        if batch_number:
-            filename = f'batch_{batch_number}_{timestamp}.json'
-        else:
-            filename = f'{timestamp}.json'
-
-        file_path = os.path.join(directory_path, filename)
-        print(f"Saving data to: {file_path}")
-
-        with open(file_path, 'w') as f:
-            json.dump(data, f)
-
-reddit = ScrapeReddit(subreddit_name=subreddit_name)
+# Running the scraper
+reddit = ScrapeReddit()
 reddit.get_posts()
 reddit.load_post_ids_from_json()
 
 data = reddit.get_post_details()
-print(data)
+
 # Process the JSON data
 res = []
-for i, postid in enumerate(reddit.postids):
+for i in range(len(data)):
     try:
-        text = reddit.get_data(postid)
-        parsed_json = json.loads(text)
+        parsed_json = json.loads(data[i])
         info = ScrapeReddit.get_post_info(parsed_json)
-
         if info is None:
-            print(f"Post {postid} skipped due to date limit or missing data.")
-            continue
-
+            print("Post skipped due to date limit.")
+            continue  # Skip to the next iteration
         res.append(info)
-
-        # Save each post's details immediately after processing
-        save_to_json([info], 'SouthwestAirlines')
-
     except JSONDecodeError as e:
-        reddit.log_error(postid, f"JSON decoding error: {e}")
-    except Exception as e:
-        reddit.log_error(postid, f"Unexpected error: {e}")
+        print(e)
+        continue
+
+def save_to_json(data, subreddit):
+    """Save the scraped data to a JSON file in the current working directory."""
+    # Get the current working directory
+    current_dir = os.getcwd()
+    print(f"Current working directory: {current_dir}")
+
+    # Create the timestamp for the filename
+    timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+
+    # Construct the path using the current working directory and 'data/SouthwestAirlines'
+    directory_path = os.path.join(current_dir, 'data', subreddit)
+    if not os.path.exists(directory_path):
+        print(f"Directory {directory_path} not found, creating it now...")
+        os.makedirs(directory_path, exist_ok=True)
+    else:
+        print(f"Directory {directory_path} exists.")
+
+    # Construct the full path for the file
+    filename = os.path.join(directory_path, f'{timestamp}_SouthwestAirlines.json')
+    print(f"Saving file to: {filename}")
+
+    # Save the data to the JSON file
+    with open(filename, 'w') as f:
+        json.dump(data, f)
 
 
-save_to_json(res, subreddit_name)
-
-# save_to_json(res, 'Southwest_Airlines')
-# save_to_json(res, 'AmericanAir')
-
-
-# airline_subreddits = ['SouthwestAirlines', 'Southwest_Airlines', 'AmericanAir', 'DeltaAirlines', 'HawaiianAirlines', 'frontierairlines']
+save_to_json(res, 'SouthwestAirlines')
