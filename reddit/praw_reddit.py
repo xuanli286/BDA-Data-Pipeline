@@ -1,4 +1,3 @@
-a_Rachel🤩😍🤪, [23/10/2024 11:32 pm]
 import praw
 import pandas as pd
 import os
