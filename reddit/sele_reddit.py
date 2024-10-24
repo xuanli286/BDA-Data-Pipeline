@@ -23,9 +23,8 @@ import json
 import os
 from datetime import datetime, timedelta
 
-# change this accordingly  to use all links
-subreddits = ['https://www.reddit.com/r/SouthwestAirlines/top/?t=all', 'https://www.reddit.com/r/SouthwestAirlines/top/?t=year', 'https://www.reddit.com/r/SouthwestAirlines/hot/']
-# subreddits = ['https://www.reddit.com/r/delta/top/?t=all']
+# subreddits = ['https://www.reddit.com/r/SouthwestAirlines/top/?t=all', 'https://www.reddit.com/r/SouthwestAirlines/top/?t=year', 'https://www.reddit.com/r/SouthwestAirlines/hot/']
+subreddits = ['https://www.reddit.com/r/SouthwestAirlines/top/?t=all']
 
 class ScrapeReddit:
     def __init__(self, headless=False):
@@ -233,6 +232,7 @@ class ScrapeReddit:
             return None
         post_body = post['title']
         post_user = post['author']
+        post_id = post['id']
         post_time = post['created_utc']
         self_text = post['selftext']
         comments = json_data[1]['data']['children']
@@ -241,12 +241,20 @@ class ScrapeReddit:
         for (comment, idx) in zip(comments, range(len(comments))):
             if 'body' in comment['data'] and 'author' in comment['data'] and 'created_utc' in comment['data']:
 
+                comment_id = comment['data']['id']
                 comment_body = comment['data']['body']
                 comment_user = comment['data']['author']
                 comment_time = comment['data']['created_utc']
-                comments_list.append({'body': comment_body,
-                                    'user': comment_user,
-                                    'time': comment_time})
+                comment_date = datetime.fromtimestamp(comment_time)
+                comment_date_str = comment_date.strftime('%Y-%m-%d %H:%M:%S')
+                score = comment['data']['score']
+                comments_list.append({'content': comment_body, 
+                                    'id':comment_id,
+                                    'username': comment_user,
+                                    'date': comment_date_str,
+                                    'score': score,
+                                    'post_id': post_id,
+                                    'parent_id': 'na'})
                 comment_replies = []
 
             # append reply to the comment to which it belongs
@@ -257,15 +265,19 @@ class ScrapeReddit:
 
                 # Make sure the 'data' and 'children' keys are present in the replies structure
                 if 'data' in comment['data']['replies'] and 'children' in comment['data']['replies']['data']:
-                    replies = comment['data']['replies']['data']['children']
+                    replies = comment['data']['replies']['data']['children'] 
 
                     for reply in replies:
                         # Ensure that the required keys are present in each reply
-                        if all(key in reply['data'] for key in ['body', 'author', 'created_utc']):
+                        if all(key in reply['data'] for key in ['body', 'author', 'created_utc', 'parent_id', 'link_id', 'score']):
                             reply_body = reply['data']['body']
                             reply_user = reply['data']['author']
                             reply_time = reply['data']['created_utc']
-                            comment_replies.append({'body': reply_body, 'user': reply_user, 'time': reply_time})
+                            parent_id = reply['data']['parent_id']
+                            score = reply['data']['score']
+                            subreddit_id = reply['data']['link_id']
+                            id = reply['data']['id']
+                            comment_replies.append({'content': reply_body, 'username': reply_user, 'date': reply_time, 'parent_id': parent_id, 'post_id':subreddit_id, 'score': score, 'id': id})
             comments_list[-1]['replies'] = comment_replies
 
         # Convert the timestamp to a datetime object
@@ -340,5 +352,4 @@ def save_to_json(data, subreddit):
         json.dump(data, f)
 
 
-# add the airline name here
 save_to_json(res, 'SouthwestAirlines')
