@@ -18,6 +18,7 @@ async def scrape_reviews(airline, session, url, headers):
     last_page_tag = bs.find("article", {"class": "comp comp_reviews-pagination querylist-pagination position-"})
     if last_page_tag:
         last_page = int(last_page_tag.find_all("li")[-2].text.strip())
+        print(f"Total Pages for {airline}: {last_page}")
     else:
         last_page = 1
 
@@ -36,8 +37,12 @@ async def scrape_reviews(airline, session, url, headers):
             for items in container.find_all("article"):
                 verified = False
                 rating = items.find("div", {"class": "rating-10"})
-                if rating:
-                    rating = int(rating.text.strip()[:1])
+                if rating :
+                    rating = rating.text.strip().split("/")[0]
+                    if rating == "na":
+                        rating = 0
+                    else:
+                        rating = int(rating)
                 else:
                     rating = 0
                 title = items.find("h2", {"class": "text_header"})
