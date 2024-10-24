@@ -23,8 +23,9 @@ import json
 import os
 from datetime import datetime, timedelta
 
-# subreddits = ['https://www.reddit.com/r/SouthwestAirlines/top/?t=all', 'https://www.reddit.com/r/SouthwestAirlines/top/?t=year', 'https://www.reddit.com/r/SouthwestAirlines/hot/']
-subreddits = ['https://www.reddit.com/r/delta/top/?t=all']
+# change this accordingly  to use all links
+subreddits = ['https://www.reddit.com/r/SouthwestAirlines/top/?t=all', 'https://www.reddit.com/r/SouthwestAirlines/top/?t=year', 'https://www.reddit.com/r/SouthwestAirlines/hot/']
+# subreddits = ['https://www.reddit.com/r/delta/top/?t=all']
 
 class ScrapeReddit:
     def __init__(self, headless=False):
@@ -273,10 +274,6 @@ class ScrapeReddit:
         # Format the datetime object to a readable string
         formatted_date = post_date.strftime('%Y-%m-%d %H:%M:%S')
 
-        if post_date < date_limit:
-            print(f"Post from {post_body} is earlier than August 2023. Skipping.")
-            return None
-
         num_comments = post['num_comments']
         link = post['permalink']
 
@@ -343,4 +340,5 @@ def save_to_json(data, subreddit):
         json.dump(data, f)
 
 
-# save_to_json(res, 'SouthwestAirlines')
+# add the airline name here
+save_to_json(res, 'SouthwestAirlines')
