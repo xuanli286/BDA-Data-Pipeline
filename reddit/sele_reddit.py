@@ -276,11 +276,13 @@ class ScrapeReddit:
                             if reply_body != '[removed]' and reply_body != '[deleted]':
                                 reply_user = reply['data']['author']
                                 reply_time = reply['data']['created_utc']
+                                reply_date = datetime.fromtimestamp(reply_time)
+                                reply_date_str = reply_date.strftime('%Y-%m-%d %H:%M:%S')
                                 parent_id = reply['data']['parent_id']
                                 score = reply['data']['score']
                                 subreddit_id = reply['data']['link_id']
                                 id = reply['data']['id']
-                                comment_replies.append({'content': reply_body, 'username': reply_user, 'date': reply_time, 'parent_id': parent_id, 'post_id':subreddit_id, 'score': score, 'id': id})
+                                comment_replies.append({'content': reply_body, 'username': reply_user, 'date': reply_date_str, 'parent_id': parent_id, 'post_id':subreddit_id, 'score': score, 'id': id})
             if len(comments_list) > 0:
                 comments_list[-1]['replies'] = comment_replies
 
