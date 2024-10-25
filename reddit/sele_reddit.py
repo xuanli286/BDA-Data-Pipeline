@@ -23,8 +23,8 @@ import json
 import os
 from datetime import datetime, timedelta
 
-subreddits = ['https://www.reddit.com/r/Southwest_Airlines/top/?t=all', 'https://www.reddit.com/r/Southwest_Airlines/top/?t=year', 'https://www.reddit.com/r/Southwest_Airlines/hot/']
-# subreddits = ['https://www.reddit.com/r/Southwest_Airlines/top/?t=all']
+subreddits = ['https://www.reddit.com/r/HawaiianAirlines/top/?t=all', 'https://www.reddit.com/r/HawaiianAirlines/top/?t=year', 'https://www.reddit.com/r/HawaiianAirlines/hot/']
+# subreddits = ['https://www.reddit.com/r/HawaiianAirlines/top/?t=all']
 
 class ScrapeReddit:
     def __init__(self, headless=False):
@@ -51,7 +51,7 @@ class ScrapeReddit:
 
     def save_id_to_json(self, data, batch_number):
         """Save the post IDs to a JSON file in the local computer."""
-        directory = 'ids/Southwest_Airlines'
+        directory = 'ids/HawaiianAirlines'
         if not os.path.exists(directory):
             os.makedirs(directory)
 
@@ -153,7 +153,7 @@ class ScrapeReddit:
 
     def get_data(self, postid):
         """Fetch post data from Reddit based on the post ID."""
-        base_url = "https://reddit.com/r/Southwest_Airlines/comments/"
+        base_url = "https://reddit.com/r/HawaiianAirlines/comments/"
         url = base_url + postid + ".json"
         self.driver.get(url)
         # self.driver.maximize_window()
@@ -165,7 +165,7 @@ class ScrapeReddit:
     
     def load_post_ids_from_json(self):
         """Load all post IDs from the saved JSON files in the 'data' directory."""
-        directory = 'ids/Southwest_Airlines'
+        directory = 'ids/HawaiianAirlines'
         all_post_ids = []  # This will store all the post IDs from all batches
         if not os.path.exists(directory):
             print(f"Directory {directory} does not exist, skipping loading of post IDs.")
@@ -281,7 +281,8 @@ class ScrapeReddit:
                                 subreddit_id = reply['data']['link_id']
                                 id = reply['data']['id']
                                 comment_replies.append({'content': reply_body, 'username': reply_user, 'date': reply_time, 'parent_id': parent_id, 'post_id':subreddit_id, 'score': score, 'id': id})
-            comments_list[-1]['replies'] = comment_replies
+            if len(comments_list) > 0:
+                comments_list[-1]['replies'] = comment_replies
 
         # Convert the timestamp to a datetime object
         post_date = datetime.fromtimestamp(post_time)
@@ -338,7 +339,7 @@ def save_to_json(data, subreddit):
     # Create the timestamp for the filename
     timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 
-    # Construct the path using the current working directory and 'data/Southwest_Airlines'
+    # Construct the path using the current working directory and 'data/HawaiianAirlines'
     directory_path = os.path.join(current_dir, 'data', subreddit)
     if not os.path.exists(directory_path):
         print(f"Directory {directory_path} not found, creating it now...")
@@ -347,7 +348,7 @@ def save_to_json(data, subreddit):
         print(f"Directory {directory_path} exists.")
 
     # Construct the full path for the file
-    filename = os.path.join(directory_path, f'{timestamp}_Southwest_Airlines.json')
+    filename = os.path.join(directory_path, f'{timestamp}_HawaiianAirlines.json')
     print(f"Saving file to: {filename}")
 
     # Save the data to the JSON file
@@ -355,4 +356,4 @@ def save_to_json(data, subreddit):
         json.dump(data, f)
 
 
-save_to_json(res, 'Southwest_Airlines')
+save_to_json(res, 'HawaiianAirlines')
