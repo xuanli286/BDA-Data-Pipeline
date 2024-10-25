@@ -21,8 +21,8 @@ with open('../models/vectorizer.pkl', 'rb') as f:
 with open('../models/lda_model.pkl', 'rb') as f:
     lda_model = pickle.load(f)
 
-with open('../data/topic_dict.json', 'r') as f:
-    topic_dict = json.load(f)
+with open('../data/topic_dict.pkl', 'rb') as f:
+    topic_dict = pickle.load(f)
 
 
 ###### Useful functions
@@ -58,16 +58,37 @@ def preprocess_text(text):
     text = ' '.join([word for word in text.split() if word not in stop_words])
     return text
 
-class Dataset(json_object=json_obj, vectorizer=vectorizer, lda_model=lda_model):
-    def __init__(self) -> None:
+def get_aspect(df, vectorizer=vectorizer, lda_model=lda_model, topic_dict=topic_dict):
+    """
+    Get aspect of text using LDA model.
+
+    Args:
+    text (str): text to extract aspect from
+    vectorizer (object): vectorizer object
+    lda_model (object): lda model object
+
+    Returns:
+    str: dominant aspect of text
+    """
+    tfidf_vector = vectorizer.transform(df['content'])
+    # extract aspects using LDA model
+    aspects = lda_model.transform(tfidf_vector)
+    dominant_aspect = aspects.argmax(axis=1)
+    df['topic'] = pd.Series(dominant_aspect).apply(lambda x: list(topic_dict.keys())[x])
+
+    return aspects
+
+
+class Dataset:
+    def __init__(self, json_object, vectorizer=vectorizer, lda_model=lda_model, topic_dict=topic_dict) -> None:
         self.data = self.parse(json_object)
         self.vectorizer = vectorizer
         self.lda_model = lda_model
+        self.topic_dict = topic_dict
         self.aspects = self.extract_aspect()
         self.vader_model = SentimentIntensityAnalyzer()
-        self.topic_dict = topic_dict
         self.get_sentiment()
-        self.get_absa_pair()
+        # self.get_absa_pair()
 
 
     def parse(self, json_object: object) -> object:
@@ -81,7 +102,8 @@ class Dataset(json_object=json_obj, vectorizer=vectorizer, lda_model=lda_model):
         object: parsed json object as a dataframe
         """
         print("Parsing json objects")
-        data = json.loads(json_object)
+        # data = json.loads(json_object)
+        data = json_object
         if "title" in data[0]:
             # dealing with posts
             # check for english-only text
@@ -91,7 +113,7 @@ class Dataset(json_object=json_obj, vectorizer=vectorizer, lda_model=lda_model):
 
             # combine title with content and preprocess
             df["content"] = df["title"] + " " +  df["content"]
-            df = df.drop(columns=['title', 'username', 'commentCount', 'score', 'subreddit', 'Code']) 
+            df = df.drop(columns=['title', 'username', 'commentCount', 'score', 'subreddit']) 
 
         else:
             # dealing with comments
@@ -103,7 +125,7 @@ class Dataset(json_object=json_obj, vectorizer=vectorizer, lda_model=lda_model):
 
         # resultant dataframe should only have id, date and content columns
         df["content"] = df["content"].apply(preprocess_text)
-        print("Parsed json objects of size {df.shape}")
+        print(f"Parsed json objects of size {df.shape}")
         return df
 
     def extract_aspect(self):
@@ -115,11 +137,7 @@ class Dataset(json_object=json_obj, vectorizer=vectorizer, lda_model=lda_model):
         """
         print("Extracting aspects")
         # vectorize text
-        tfidf_vector = self.vectorizer.transform(self.data["content"])
-        # extract aspects using LDA model
-        aspects = self.lda_model.transform(tfidf_vector)
-        dominant_aspect = aspects.argmax(axis=1)
-        return dominant_aspect
+        return get_aspect(self.data, self.vectorizer, self.lda_model, self.topic_dict)
     
     def get_sentiment(self):
         """
@@ -131,9 +149,10 @@ class Dataset(json_object=json_obj, vectorizer=vectorizer, lda_model=lda_model):
         self.data['sentiment'] = self.data['content'].apply(lambda x: self.vader_model.polarity_scores(x)['compound'])
         return
 
-    def get_absa_pair(self):
-        """
-        Add aspect-sentiment pair of text using VADER to self.data
-        """
-        print("Getting sentiment")
-        self.data["topic"] = self.data["topic"].apply(lambda x: list(self.topic_dict.keys())[x])
+    # def get_absa_pair(self):
+    #     """
+    #     Add aspect-sentiment pair of text using VADER to self.data
+    #     """
+    #     print("Getting sentiment")
+    #     self.data["topic"] = self.data["topic"].apply(lambda x: list(self.topic_dict.keys())[x])
+    #     return
