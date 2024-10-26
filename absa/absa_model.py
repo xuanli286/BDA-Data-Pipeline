@@ -1,4 +1,5 @@
 # Base class for dataset
+from abc import abstractmethod
 import json
 from langdetect import detect, DetectorFactory
 from langdetect.lang_detect_exception import LangDetectException
@@ -81,6 +82,7 @@ def get_aspect(df, vectorizer=vectorizer, lda_model=lda_model, topic_dict=topic_
 
 class Dataset:
     def __init__(self, json_object, vectorizer=vectorizer, lda_model=lda_model, topic_dict=topic_dict) -> None:
+        # main template method
         self.data = self.parse(json_object)
         self.vectorizer = vectorizer
         self.lda_model = lda_model
@@ -88,12 +90,42 @@ class Dataset:
         self.aspects = self.extract_aspect()
         self.vader_model = SentimentIntensityAnalyzer()
         self.get_sentiment()
-        # self.get_absa_pair()
 
-
+    @abstractmethod
     def parse(self, json_object: object) -> object:
         """
-        Method to load json object and preprocess text
+        Abstract method to parse JSON object to be implemented by child class.
+
+        Return:
+        dataframe containing "content" column
+        """
+
+    def extract_aspect(self):
+        """
+        Exctract aspects from self.data using LDA model
+
+        Returns:
+        list: list of dominant aspects in self.data
+        """
+        print("Extracting aspects")
+        # vectorize text
+        return get_aspect(self.data, self.vectorizer, self.lda_model, self.topic_dict)
+    
+    def get_sentiment(self):
+        """
+        Get sentiment of text using VADER
+
+        Returns:
+        float: sentiment score
+        """
+        self.data['sentiment'] = self.data['content'].apply(lambda x: self.vader_model.polarity_scores(x)['compound'])
+        return
+
+
+class JSON_Dataset(Dataset):
+    def parse(self, json_object: object) -> object:
+        """
+        Polymorphosized method to load json object and preprocess text
 
         Args:
         json_object (object): json object to parse
@@ -127,32 +159,3 @@ class Dataset:
         df["content"] = df["content"].apply(preprocess_text)
         print(f"Parsed json objects of size {df.shape}")
         return df
-
-    def extract_aspect(self):
-        """
-        Exctract aspects from self.data using LDA model
-
-        Returns:
-        list: list of dominant aspects in self.data
-        """
-        print("Extracting aspects")
-        # vectorize text
-        return get_aspect(self.data, self.vectorizer, self.lda_model, self.topic_dict)
-    
-    def get_sentiment(self):
-        """
-        Get sentiment of text using VADER
-
-        Returns:
-        float: sentiment score
-        """
-        self.data['sentiment'] = self.data['content'].apply(lambda x: self.vader_model.polarity_scores(x)['compound'])
-        return
-
-    # def get_absa_pair(self):
-    #     """
-    #     Add aspect-sentiment pair of text using VADER to self.data
-    #     """
-    #     print("Getting sentiment")
-    #     self.data["topic"] = self.data["topic"].apply(lambda x: list(self.topic_dict.keys())[x])
-    #     return
