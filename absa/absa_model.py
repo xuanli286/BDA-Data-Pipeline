@@ -11,6 +11,7 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from nltk.stem import PorterStemmer
 
 DetectorFactory.seed = 42
 nltk.download('stopwords')
@@ -25,6 +26,7 @@ with open('../models/lda_model.pkl', 'rb') as f:
 with open('../data/topic_dict.pkl', 'rb') as f:
     topic_dict = pickle.load(f)
 
+stemmer = PorterStemmer()
 
 ###### Useful functions
 def is_english(text):
@@ -55,8 +57,9 @@ def preprocess_text(text):
     text = re.sub(r'\d+', '', text)
     # remove punctuation
     text = re.sub(r'[^\w\s]', '', text)
-    # remove whitespaces
-    text = ' '.join([word for word in text.split() if word not in stop_words])
+    # remove spaces and stopwords
+    text = ' '.join([stemmer.stem(word) for word in text.split() if word not in stop_words])
+
     return text
 
 def get_aspect(df, vectorizer=vectorizer, lda_model=lda_model, topic_dict=topic_dict):
@@ -74,7 +77,11 @@ def get_aspect(df, vectorizer=vectorizer, lda_model=lda_model, topic_dict=topic_
     tfidf_vector = vectorizer.transform(df['content'])
     # extract aspects using LDA model
     aspects = lda_model.transform(tfidf_vector)
+
+    #get the most likely topic
     dominant_aspect = aspects.argmax(axis=1)
+
+    # x is the key so we get the value of the key 0,1,2 and then get the value of it eg. technology
     df['topic'] = pd.Series(dominant_aspect).apply(lambda x: list(topic_dict.keys())[x])
 
     return aspects
@@ -100,9 +107,9 @@ class Dataset:
         dataframe containing "content" column
         """
 
-    def extract_aspect(self):
+    def extract_aspect(self):  #check what does extract aspect do 
         """
-        Exctract aspects from self.data using LDA model
+        Extract aspects from self.data using LDA model
 
         Returns:
         list: list of dominant aspects in self.data
@@ -141,6 +148,7 @@ class JSON_Dataset(Dataset):
             # check for english-only text
             df = pd.DataFrame(data, columns=["id", "date", "title", "content", "username", "commentCount", "score", "subreddit"])
             df = df[df["content"].apply(is_english)]
+            # to remove the old index
             df = df.reset_index(drop=True)
 
             # combine title with content and preprocess
