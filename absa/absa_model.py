@@ -26,16 +26,6 @@ load_dotenv()
 DetectorFactory.seed = 42
 nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
-
-with open('../models/vectorizer.pkl', 'rb') as f:
-    vectorizer = pickle.load(f)
-
-with open('../models/lda_model.pkl', 'rb') as f:
-    lda_model = pickle.load(f)
-
-with open('../data/topic_dict.pkl', 'rb') as f:
-    topic_dict = pickle.load(f)
-
 stemmer = PorterStemmer()
 
 ###### Useful functions
@@ -72,7 +62,7 @@ def preprocess_text(text):
 
     return text
 
-def get_aspect(df, vectorizer=vectorizer, lda_model=lda_model, topic_dict=topic_dict):
+def get_aspect(df, vectorizer=None, lda_model=None, topic_dict=None):
     """
     Get aspect of text using LDA model.
 
@@ -301,4 +291,27 @@ class JSON_Dataset(Dataset):
         # resultant dataframe should only have id, date and content columns
         df["content"] = df["content"].apply(preprocess_text)
         print(f"Parsed json objects of size {df.shape}")
+        return df
+    
+class CSV_Dataset(Dataset):
+    def parse(self, csv_object: object) -> object:
+        """
+        Polymorphosized method to load csv object and preprocess text
+
+        Args:
+        object (object): csv object to parse
+
+        Returns:
+        object: parsed csv object as a dataframe
+        """
+        print("Parsing csv objects")
+        df = csv_object
+        df['content'] = df['content'].astype(str)
+        # check for english-only text
+        df = df[df["content"].apply(is_english)]
+        # to remove the old index
+        df = df.reset_index(drop=True)
+        # resultant dataframe should only have id, date and content columns
+        df["content"] = df["content"].apply(preprocess_text)
+        print(f"Parsed csv objects of size {df.shape}")
         return df
