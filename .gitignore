@@ -2,3 +2,4 @@
 .venv
 lambda-*/
 .DS_Store
+venv
