@@ -1,0 +1,11 @@
+langchain-core
+langdetect
+matplotlib
+nltk
+openai
+pandas
+python-dotenv
+scikit-learn
+spacy
+transformers
+vaderSentiment
