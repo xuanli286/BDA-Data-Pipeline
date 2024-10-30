@@ -7,7 +7,7 @@ import praw
 
 load_dotenv()
 
-airline_subreddits = ['SouthwestAirlines', 'Southwest_Airlines', 'AmericanAir', 'DeltaAirlines', 'HawaiianAirlines', 'frontierairlines']
+airline_subreddits = ['SouthwestAirlines', 'Southwest_Airlines', 'AmericanAir', 'DeltaAirlines', 'HawaiianAirlines', 'frontierairlines', 'jetblue', 'AlaskaAirlines', 'americaneagle', 'amceagle']
 
 reddit = praw.Reddit(
     client_id=os.environ.get('REDDIT_ID'),
@@ -53,13 +53,13 @@ s3 = boto3.client('s3')
 try:
     s3.put_object(
         Bucket='is459-project-data', 
-        Key='reddit/reddit_posts.json',
+        Key='reddit/posts/reddit_posts.json',
         Body=json.dumps(posts),
         ContentType='application/json'
     )
     s3.put_object(
         Bucket='is459-project-data', 
-        Key=f'reddit/reddit_comments.json',
+        Key=f'reddit/comments/reddit_comments.json',
         Body=json.dumps(comments),
         ContentType='application/json'
     )
