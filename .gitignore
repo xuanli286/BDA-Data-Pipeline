@@ -3,3 +3,6 @@
 lambda-*/
 .DS_Store
 venv
+terraform/.terraform
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
