@@ -67,12 +67,8 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
       type = "double"
     }
     columns {
-      name = "DayOfWeek"
-      type = "bigint"
-    }
-    columns {
-      name = "DayofMonth"
-      type = "bigint"
+      name = "Date"
+      type = "string"
     }
     columns {
       name = "DepDelay"
@@ -103,10 +99,6 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
       type = "double"
     }
     columns {
-      name = "Month"
-      type = "bigint"
-    }
-    columns {
       name = "NASDelay"
       type = "double"
     }
@@ -117,10 +109,6 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
     columns {
       name = "SecurityDelay"
       type = "double"
-    }
-    columns {
-      name = "TailNum"
-      type = "string"
     }
     columns {
       name = "TaxiIn"
@@ -137,10 +125,6 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
     columns {
       name = "WeatherDelay"
       type = "double"
-    }
-    columns {
-      name = "Year"
-      type = "bigint"
     }
 
     location = "s3://is459-project-output-data/kaggle/"
