@@ -14,6 +14,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize 
 from nltk.stem import PorterStemmer
 import numpy as np
+np.bool = bool
 nltk.download('punkt')
 nltk.download('punkt_tab')
 import openai
@@ -25,7 +26,9 @@ import requests
 import s3fs
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import TfidfVectorizer
+import string
 import sys
+import uuid
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 from awsglue.transforms import *
@@ -47,6 +50,7 @@ job.init(args['JOB_NAME'], args)
 glue_db = "is459-project-reddit-database"
 glue_post_tbl = "new_posts"
 glue_comment_tbl = "new_comments"
+glue_skytrax_tbl = "reviews"
 
 dynamic_posts_frame = glueContext.create_dynamic_frame.from_catalog(
     database=glue_db,
@@ -56,11 +60,16 @@ dynamic_comments_frame = glueContext.create_dynamic_frame.from_catalog(
     database=glue_db,
     table_name=glue_comment_tbl,        
 )
+dynamic_skytrax_frame = glueContext.create_dynamic_frame.from_catalog(
+    database=glue_db,
+    table_name=glue_skytrax_tbl,        
+)
 
 s3 = boto3.client('s3')
 
 posts_df = dynamic_posts_frame.toDF().toPandas()
 comments_df = dynamic_comments_frame.toDF().toPandas()
+skytrax_df = dynamic_skytrax_frame.toDF().toPandas()
 
 posts_df = posts_df.replace("", np.nan)
 posts_df.dropna(inplace=True)
@@ -74,7 +83,8 @@ airlines = {
     'AmericanAir': 'AA',
     'DeltaAirlines': 'DL',
     'HawaiianAirlines': 'HA',
-    'frontierairlines': 'F9'
+    'frontierairlines': 'F9',
+    'delta': 'DL'
 }
 posts_df['Code'] = posts_df['subreddit'].map(airlines)
 
@@ -83,6 +93,20 @@ comments_df = comments_df.drop_duplicates(subset="id", keep="first")
 
 code_post_dict = posts_df.set_index('id')['Code'].to_dict()
 comments_df['Code'] = comments_df['post_id'].map(code_post_dict)
+
+skytrax_df = skytrax_df.drop_duplicates(subset=["airline", "username", "title", "publishedDate"], keep="first")
+skytrax_airlines = {
+    'southwest-airlines': 'WN', 
+    'american-airlines': 'AA',
+    'delta-air-lines': 'DL',
+    'hawaiian-airlines': 'HA',
+    'frontier-airlines': 'F9'
+}
+skytrax_df['Code'] = skytrax_df['airline'].map(skytrax_airlines)
+
+posts_df = posts_df.dropna()
+comments_df = comments_df.dropna()
+skytrax_df = skytrax_df.dropna()
 
 DetectorFactory.seed = 42
 nltk.download('stopwords')
@@ -164,6 +188,7 @@ def get_aspect(df, vectorizer=None, lda_model=None, topic_dict=None):
     aspects = lda_model.transform(tfidf_vector)
     dominant_aspect = aspects.argmax(axis=1)
     df['topic'] = pd.Series(dominant_aspect).apply(lambda x: list(topic_dict.keys())[x])
+    df['topic'] = df['topic'].str.replace(f"[{string.punctuation}\d]", "", regex=True)
     return aspects
 
 
@@ -346,8 +371,29 @@ class DF_Dataset(Dataset):
         pd.DataFrame: Processed DataFrame.
         """
         print("Parsing DataFrame")
+        
+        if "publishedDate" in df.columns:
+            df["review"] = df["review"].apply(translate_text)
+            df["review"] = df["review"].replace("", np.nan)
+            df["review"] = df["review"].replace("[deleted]", np.nan)
 
-        if "title" in df.columns:
+            df["title"] = df["title"].apply(translate_text)
+            df["title"] = df["title"].replace("", np.nan)
+            df["title"] = df["title"].replace("[deleted]", np.nan)
+
+            df = df.dropna(subset=["review", "title"]).reset_index(drop=True)
+        
+            df['publishedDate'] = df['publishedDate'].apply(lambda x: re.sub(r'(\d+)(st|nd|rd|th)', r'\1', x))
+            df['publishedDate'] = pd.to_datetime(df['publishedDate'], errors='coerce')
+            df = df.dropna(subset=['publishedDate'])
+            df['publishedDate'] = df['publishedDate'].dt.strftime('%Y-%m-%d %H:%M:%S')
+
+            df['content'] = df["title"] + " " + df["review"]
+            df['id'] = [uuid.uuid4() for _ in range(len(df))]
+            df = df.rename(columns={'publishedDate': 'date'})
+            df = df.drop(columns=['airline', 'username', 'rating', 'title', 'verified', 'review', 'recommend'])
+
+        elif "title" in df.columns:
             df["content"] = df["content"].apply(translate_text)
             df["content"] = df["content"].replace("", np.nan)
             df["content"] = df["content"].replace("[deleted]", np.nan)
@@ -380,29 +426,48 @@ class DF_Dataset(Dataset):
 
 csv_buffer = io.StringIO()
 
-codes = {code: df for code, df in comments_df.groupby('Code')}
-for code, df in codes.items():
+codes = comments_df['Code'].unique()
+
+for code in codes:
     try:
-        print(f"CODE: {code}")
-        lda_file = s3.get_object(Bucket="is459-project-data", Key=f"reddit/models/{code}_lda_model.pkl")['Body'].read()
-        lda_model = pickle.loads(lda_file)
-
-        vectorizer_file = s3.get_object(Bucket="is459-project-data", Key=f"reddit/models/{code}_vectorizer.pkl")['Body'].read()
-        vectorizer_model = pickle.loads(vectorizer_file)
-
-        topic_dict_file = s3.get_object(Bucket="is459-project-data", Key=f"reddit/models/{code}_topic_dict.pkl")['Body'].read()
-        topic_dict = pickle.loads(topic_dict_file)
-
         vader = SentimentIntensityAnalyzer()
         
-        posts_data = DF_Dataset(posts_df, vectorizer=vectorizer_model, lda_model=lda_model, topic_dict=topic_dict, vader_model=vader)
-        posts_data.data.to_csv(csv_buffer, index=False)
+        # Comments
+        comments_lda_file = s3.get_object(Bucket="is459-project-data", Key=f"reddit/models/{code}_comments_lda_model.pkl")['Body'].read()
+        comments_lda_model = pickle.loads(comments_lda_file)
+
+        comments_vectorizer_file = s3.get_object(Bucket="is459-project-data", Key=f"reddit/models/{code}_comments_vectorizer.pkl")['Body'].read()
+        comments_vectorizer_model = pickle.loads(comments_vectorizer_file)
+        
+        comments_topic_dict_file = s3.get_object(Bucket="is459-project-data", Key=f"reddit/models/{code}_comments_topic_dict.pkl")['Body'].read()
+        comments_topic_dict = pickle.loads(comments_topic_dict_file)
+
+        comments_data = DF_Dataset(comments_df[comments_df['Code'] == code].copy(), vectorizer=comments_vectorizer_model, lda_model=comments_lda_model, topic_dict=comments_topic_dict, vader_model=vader)
+        comments_data.data.to_csv(csv_buffer, index=False)
+        
+        s3.put_object(Bucket="is459-project-output-data", Key=f"reddit/{code}_comments_{datetime.utcnow().strftime('%Y-%m-%d')}.csv", Body=csv_buffer.getvalue())
+        
+        
+        # Posts
+        posts_lda_file = s3.get_object(Bucket="is459-project-data", Key=f"reddit/models/{code}_posts_lda_model.pkl")['Body'].read()
+        posts_lda_model = pickle.loads(posts_lda_file)
+
+        posts_vectorizer_file = s3.get_object(Bucket="is459-project-data", Key=f"reddit/models/{code}_posts_vectorizer.pkl")['Body'].read()
+        posts_vectorizer_model = pickle.loads(posts_vectorizer_file)
+        
+        posts_topic_dict_file = s3.get_object(Bucket="is459-project-data", Key=f"reddit/models/{code}_posts_topic_dict.pkl")['Body'].read()
+        posts_topic_dict = pickle.loads(posts_topic_dict_file)
+        
+        posts_data = DF_Dataset(posts_df[posts_df['Code'] == code].copy(), vectorizer=posts_vectorizer_model, lda_model=posts_lda_model, topic_dict=posts_topic_dict, vader_model=vader)
+        
         s3.put_object(Bucket="is459-project-output-data", Key=f"reddit/{code}_posts_{datetime.utcnow().strftime('%Y-%m-%d')}.csv", Body=csv_buffer.getvalue())
 
-        comments_data = DF_Dataset(comments_df, vectorizer=vectorizer_model, lda_model=lda_model, topic_dict=topic_dict, vader_model=vader)
-        comments_data.data.to_csv(csv_buffer, index=False)
-        s3.put_object(Bucket="is459-project-output-data", Key=f"reddit/{code}_comments_{datetime.utcnow().strftime('%Y-%m-%d')}.csv", Body=csv_buffer.getvalue())
-
+        
+        # Skytrax
+        skytrax_data = DF_Dataset(skytrax_df[skytrax_df['Code'] == code].copy(), vectorizer=posts_vectorizer_model, lda_model=posts_lda_model, topic_dict=posts_topic_dict, vader_model=vader)
+        
+        s3.put_object(Bucket="is459-project-output-data", Key=f"reddit/{code}_skytrax_{datetime.utcnow().strftime('%Y-%m-%d')}.csv", Body=csv_buffer.getvalue())
+        
     except Exception as e:
         print(f"Error loading file from S3: {e}")
 
