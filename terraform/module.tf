@@ -60,7 +60,7 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
     }
     columns {
       name = "Cancelled"
-      type = "bigint"
+      type = "double"
     }
     columns {
       name = "CarrierDelay"
@@ -68,7 +68,7 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
     }
     columns {
       name = "Date"
-      type = "string"
+      type = "bigint"
     }
     columns {
       name = "DepDelay"
@@ -88,11 +88,11 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
     }
     columns {
       name = "Diverted"
-      type = "bigint"
+      type = "double"
     }
     columns {
       name = "FlightNum"
-      type = "bigint"
+      type = "int"
     }
     columns {
       name = "LateAircraftDelay"
