@@ -419,12 +419,10 @@ class DF_Dataset(Dataset):
             df = df.drop(columns=['username', 'score', 'post_id', 'parent_id'])
 
         df["content"] = df["content"].apply(preprocess_text)
+        df = df[['id', 'date', 'content', 'Code']]
         
         print(f"Parsed DataFrame with shape: {df.shape}")
         return df
-
-
-csv_buffer = io.StringIO()
 
 codes = comments_df['Code'].unique()
 
@@ -443,7 +441,8 @@ for code in codes:
         comments_topic_dict = pickle.loads(comments_topic_dict_file)
 
         comments_data = DF_Dataset(comments_df[comments_df['Code'] == code].copy(), vectorizer=comments_vectorizer_model, lda_model=comments_lda_model, topic_dict=comments_topic_dict, vader_model=vader)
-        comments_data.data.to_csv(csv_buffer, index=False)
+        csv_buffer = io.StringIO()
+        comments_data.data.to_csv(csv_buffer, index=False, header=False)
         
         s3.put_object(Bucket="is459-project-output-data", Key=f"reddit/{code}_comments_{datetime.utcnow().strftime('%Y-%m-%d')}.csv", Body=csv_buffer.getvalue())
         
@@ -459,12 +458,16 @@ for code in codes:
         posts_topic_dict = pickle.loads(posts_topic_dict_file)
         
         posts_data = DF_Dataset(posts_df[posts_df['Code'] == code].copy(), vectorizer=posts_vectorizer_model, lda_model=posts_lda_model, topic_dict=posts_topic_dict, vader_model=vader)
+        csv_buffer = io.StringIO()
+        posts_data.data.to_csv(csv_buffer, index=False, header=False)
         
         s3.put_object(Bucket="is459-project-output-data", Key=f"reddit/{code}_posts_{datetime.utcnow().strftime('%Y-%m-%d')}.csv", Body=csv_buffer.getvalue())
 
         
         # Skytrax
         skytrax_data = DF_Dataset(skytrax_df[skytrax_df['Code'] == code].copy(), vectorizer=posts_vectorizer_model, lda_model=posts_lda_model, topic_dict=posts_topic_dict, vader_model=vader)
+        csv_buffer = io.StringIO()
+        skytrax_data.data.to_csv(csv_buffer, index=False, header=False)
         
         s3.put_object(Bucket="is459-project-output-data", Key=f"reddit/{code}_skytrax_{datetime.utcnow().strftime('%Y-%m-%d')}.csv", Body=csv_buffer.getvalue())
         
