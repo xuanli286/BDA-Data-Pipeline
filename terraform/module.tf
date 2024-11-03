@@ -88,7 +88,7 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
     }
     columns {
       name = "Diverted"
-      type = "double"
+      type = "int"
     }
     columns {
       name = "FlightNum"
@@ -139,6 +139,58 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
 
   parameters = {
     "classification" = "parquet"
+  }
+
+  depends_on = [aws_athena_database.athena_db]
+}
+
+resource "aws_glue_catalog_table" "athena_table_reddit_skytrax" {
+  database_name = "s3jsondb"
+  name          = "reddit_skytrax"
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    classification     = "csv"
+    "skip.header.line.count" = "1"
+  }
+
+  storage_descriptor {
+    location      = "s3://is459-project-output-data/reddit/"
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      serialization_library = "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
+      parameters = {
+        "field.delim" = ","
+      }
+    }
+
+    columns {
+      name = "id"
+      type = "string"
+    }
+    columns  {
+      name = "date"
+      type = "string"
+    }
+    columns {
+      name = "content"
+      type = "string"
+    }
+    columns {
+      name = "code"
+      type = "string"
+    }
+    columns {
+      name = "topic"
+      type = "string"
+    }
+    columns {
+      name = "sentiment"
+      type = "string"
+    }
   }
 
   depends_on = [aws_athena_database.athena_db]
