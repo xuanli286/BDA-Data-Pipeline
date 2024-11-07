@@ -68,7 +68,7 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
     }
     columns {
       name = "Date"
-      type = "double"
+      type = "date"
     }
     columns {
       name = "DepDelay"
@@ -127,7 +127,7 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
       type = "double"
     }
 
-    location = "s3://is459-project-data/kaggle/"
+    location = "s3://is459-project-output-data/kaggle/"
 
     input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
