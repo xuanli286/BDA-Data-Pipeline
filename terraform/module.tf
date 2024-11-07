@@ -144,6 +144,7 @@ resource "aws_glue_catalog_table" "athena_table_kaggle" {
   depends_on = [aws_athena_database.athena_db]
 }
 
+# Structured Table in Athena Database for Reddit & Skytrax Reviews dataset
 resource "aws_glue_catalog_table" "athena_table_reddit_skytrax" {
   database_name = "s3jsondb"
   name          = "reddit_skytrax"
@@ -189,6 +190,51 @@ resource "aws_glue_catalog_table" "athena_table_reddit_skytrax" {
     }
     columns {
       name = "sentiment"
+      type = "string"
+    }
+  }
+
+  depends_on = [aws_athena_database.athena_db]
+}
+
+# Structured Table in Athena Database for Skytrax Ranking dataset
+resource "aws_glue_catalog_table" "athena_table_skytrax_rank" {
+  database_name = "s3jsondb"
+  name          = "skytrax_rank"
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    classification     = "csv"
+    "skip.header.line.count" = "1"
+  }
+
+  storage_descriptor {
+    location      = "s3://is459-project-output-data/skytrax/"
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      serialization_library = "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
+      parameters = {
+        "field.delim" = ","
+      }
+    }
+
+    columns {
+      name = "year"
+      type = "int"
+    }
+    columns  {
+      name = "rank"
+      type = "int"
+    }
+    columns {
+      name = "airline"
+      type = "string"
+    }
+    columns {
+      name = "unique carrier"
       type = "string"
     }
   }
