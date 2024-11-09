@@ -162,9 +162,10 @@ resource "aws_glue_catalog_table" "athena_table_reddit_skytrax" {
     output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
 
     ser_de_info {
-      serialization_library = "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
+      serialization_library = "org.apache.hadoop.hive.serde2.OpenCSVSerde"
       parameters = {
         "field.delim" = ","
+        "quoteChar"   = "\""
       }
     }
 
@@ -186,6 +187,10 @@ resource "aws_glue_catalog_table" "athena_table_reddit_skytrax" {
     }
     columns {
       name = "topic"
+      type = "string"
+    }
+    columns {
+      name = "keywords"
       type = "string"
     }
     columns {

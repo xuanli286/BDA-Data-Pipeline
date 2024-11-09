@@ -189,6 +189,7 @@ def get_aspect(df, vectorizer=None, lda_model=None, topic_dict=None):
     dominant_aspect = aspects.argmax(axis=1)
     df['topic'] = pd.Series(dominant_aspect).apply(lambda x: list(topic_dict.keys())[x])
     df['topic'] = df['topic'].str.replace(f"[{string.punctuation}\d]", "", regex=True)
+    df['keywords'] = pd.Series(dominant_aspect).apply(lambda x: ', '.join(topic_dict[list(topic_dict.keys())[x]]))
     return aspects
 
 
