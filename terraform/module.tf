@@ -260,30 +260,103 @@ resource "aws_glue_catalog_table" "athena_table_airport" {
     output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
 
     ser_de_info {
-      serialization_library = "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
+      serialization_library = "org.apache.hadoop.hive.serde2.OpenCSVSerde"
       parameters = {
         "field.delim" = ","
+        "quoteChar"   = "\""
       }
     }
 
     columns {
-      name = "airport_name"
+      name = "id"
+      type = "bigint"
+    }
+    columns {
+      name = "ident"
       type = "string"
     }
     columns {
-      name = "country"
+      name = "type"
       type = "string"
     }
     columns {
-      name = "latitude"
+      name = "name"
+      type = "string"
+    }
+    columns {
+      name = "latitude_deg"
       type = "double"
     }
     columns {
-      name = "longitude"
+      name = "longitude_deg"
       type = "double"
     }
     columns {
-      name = "airport_code"
+      name = "elevation_ft"
+      type = "double"
+    }
+    columns {
+      name = "continent"
+      type = "string"
+    }
+    columns {
+      name = "country_name"
+      type = "string"
+    }
+    columns {
+      name = "iso_country"
+      type = "string"
+    }
+    columns {
+      name = "region_name"
+      type = "string"
+    }
+    columns {
+      name = "iso_region"
+      type = "string"
+    }
+    columns {
+      name = "local_region"
+      type = "string"
+    }
+    columns {
+      name = "municipality"
+      type = "string"
+    }
+    columns {
+      name = "scheduled_service"
+      type = "bigint"
+    }
+    columns {
+      name = "gps_code"
+      type = "string"
+    }
+    columns {
+      name = "iata_code"
+      type = "string"
+    }
+    columns {
+      name = "local_code"
+      type = "string"
+    }
+    columns {
+      name = "home_link"
+      type = "string"
+    }
+    columns {
+      name = "wikipedia_link"
+      type = "string"
+    }
+    columns {
+      name = "keywords"
+      type = "string"
+    }
+    columns {
+      name = "score"
+      type = "bigint"
+    }
+    columns {
+      name = "last_updated"
       type = "string"
     }
   }
