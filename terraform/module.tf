@@ -234,7 +234,94 @@ resource "aws_glue_catalog_table" "athena_table_skytrax_rank" {
       type = "string"
     }
     columns {
-      name = "unique carrier"
+      name = "unique_carrier"
+      type = "string"
+    }
+  }
+
+  depends_on = [aws_athena_database.athena_db]
+}
+
+# Structured Table in Athena Database for airport dataset
+resource "aws_glue_catalog_table" "athena_table_airport" {
+  database_name = "s3jsondb"
+  name          = "airport"
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    classification     = "csv"
+    "skip.header.line.count" = "1"
+  }
+
+  storage_descriptor {
+    location      = "s3://is459-project-output-data/airport/"
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      serialization_library = "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
+      parameters = {
+        "field.delim" = ","
+      }
+    }
+
+    columns {
+      name = "airport_name"
+      type = "string"
+    }
+    columns {
+      name = "country"
+      type = "string"
+    }
+    columns {
+      name = "latitude"
+      type = "double"
+    }
+    columns {
+      name = "longitude"
+      type = "double"
+    }
+    columns {
+      name = "airport_code"
+      type = "string"
+    }
+  }
+
+  depends_on = [aws_athena_database.athena_db]
+}
+
+# Structured Table in Athena Database for carriers dataset
+resource "aws_glue_catalog_table" "athena_table_carriers" {
+  database_name = "s3jsondb"
+  name          = "carriers"
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    classification     = "csv"
+    "skip.header.line.count" = "1"
+  }
+
+  storage_descriptor {
+    location      = "s3://is459-project-output-data/carrier/"
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      serialization_library = "org.apache.hadoop.hive.serde2.OpenCSVSerde"
+      parameters = {
+        "separatorChar" = ","
+        "quoteChar"     = "\""
+      }
+    }
+
+    columns {
+      name = "code"
+      type = "string"
+    }
+    columns  {
+      name = "description"
       type = "string"
     }
   }
