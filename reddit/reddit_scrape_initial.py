@@ -7,7 +7,7 @@ import praw
 
 load_dotenv()
 
-airline_subreddits = ['SouthwestAirlines', 'Southwest_Airlines', 'AmericanAir', 'DeltaAirlines', 'HawaiianAirlines', 'frontierairlines', 'jetblue', 'AlaskaAirlines', 'americaneagle', 'amceagle']
+airline_subreddits = ['SouthwestAirlines', 'Southwest_Airlines', 'AmericanAir', 'DeltaAirlines', 'HawaiianAirlines', 'frontierairlines']
 
 reddit = praw.Reddit(
     client_id=os.environ.get('REDDIT_ID'),
