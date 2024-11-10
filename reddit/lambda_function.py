@@ -60,13 +60,13 @@ def lambda_handler(event, context):
     try:
         s3.put_object(
             Bucket='is459-project-data', 
-            Key=f'reddit/reddit_posts_{end_date.strftime("%Y-%m-%d")}.json',
+            Key=f'reddit/new_posts/reddit_posts_{end_date.strftime("%Y-%m-%d")}.json',
             Body=json.dumps(posts),
             ContentType='application/json'
         )
         s3.put_object(
             Bucket='is459-project-data', 
-            Key=f'reddit/reddit_comments_{end_date.strftime("%Y-%m-%d")}.json',
+            Key=f'reddit/new_comments/reddit_comments_{end_date.strftime("%Y-%m-%d")}.json',
             Body=json.dumps(comments),
             ContentType='application/json'
         )
